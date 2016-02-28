@@ -1,4 +1,11 @@
 #coding:utf-8
+#-------------------------------------------------------------------------------
+#   Name:		cepstrum.py
+#	Author:		R.Imai
+#	Created:	2016 / 02 / 28
+#	Last Date:	2016 / 02 / 29
+#	Note:
+#-------------------------------------------------------------------------------
 import numpy as np
 import pylab
 import wave
@@ -87,6 +94,6 @@ def outputCSV(data,filename):
 
 if __name__ == '__main__':
     wavdata, fs = importWave(argv[1])
-    cpsData = cepstrum(wavdata,fs,60)
+    cpsData = cepstrum(wavdata,fs,60,glaph = True)
     if argNum == 3:
         outputCSV(cpsData,argv[2])
