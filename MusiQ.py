@@ -3,7 +3,7 @@
 #   Name:		MusiQ.py
 #	Author:		R.Imai
 #	Created:	2016 / 04 / 09
-#	Last Date:	2016 / 04 / 12
+#	Last Date:	2016 / 06 / 06
 #	Note:
 #-------------------------------------------------------------------------------
 import numpy as np
@@ -13,6 +13,7 @@ import sys
 from scipy import fftpack
 from scipy import signal as sg
 import csv
+from math import*
 
 argv = sys.argv
 argNum = len(sys.argv)
@@ -25,6 +26,7 @@ class MusiQ:
         self.windowData = []
         self.fs = fs
 
+    #-------------IO--------------
     def importFile(self, rawfile, graph = False):
         f = open(rawfile, "rb")
         rawData = f.read()
@@ -32,6 +34,20 @@ class MusiQ:
         if graph:
             plt.plot(self.data)
             plt.show()
+
+    def outputCSV(self, data, filename):
+        try:
+            fp = open(filename + ".csv", 'w')
+            csvWriter = csv.writer(fp, lineterminator='\n')
+        except IOError:
+            print (filename + " cannot be opened.")
+            exit()
+        except Exception as e:
+            print('type' + str(type(e)))
+            exit()
+        for elem in data:
+            csvWriter.writerow(elem)
+        print("save " + filename +".csv")
 
     def transrate(self, filename):
         try:
@@ -52,7 +68,66 @@ class MusiQ:
         for i in range(len(self.data)//shift):
             #print(self.data[i*shift : i*shift + length])
             self.windowData.append(self.data[i*shift : i*shift + length])
+    #-----------/IO-----------
 
+    #------------filter-----------
+    def sinc(self, x):
+        re = 1.0
+        if not(x == 0.0):
+            re = np.sin(x) / x
+        return re
+
+    def fir(self, x, b):
+        y = [0.0] * len(x)  # フィルタの出力信号
+        N = len(b) - 1      # フィルタ係数の数
+        for n in range(len(x)):
+            for i in range(N+1):
+                if n - i >= 0:
+                    y[n] += b[i] * x[n - i]
+        return y
+
+    def bpf2(self, CF, BW, delta = 100.0):
+        delta = delta/(self.fs/2)
+        fe1 = CF/self.fs - (BW/self.fs)/2
+        fe2 = CF/self.fs + (BW/self.fs)/2
+        N = round(3.1 / delta) - 1
+        if (N + 1) % 2 == 0:
+            N += 1
+        N = int(N)
+        b = []
+        for i in range(int(-N/2), int(N/2 + 1)):
+            b.append(2 * fe2 * self.sinc(2 * pi * fe2 * i) - 2 * fe1 * self.sinc(2 * pi * fe1 * i))
+        hanningWindow = np.hanning(N + 1)
+        for i in range(len(b)):
+            b[i] *= hanningWindow[i]
+        return b
+
+    def bpf(self, data, cf, bw):
+
+        nyq = self.fs / 2.0
+        fe1 = (cf - bw/2)/nyq
+        fe2 = (cf + bw/2)/nyq
+
+        if len(data)%2 == 0:
+            length = len(data) - 1
+        else:
+            length = len(data)
+        sybpf = sg.firwin(length, [fe1, fe2], pass_zero=False)
+        sig = sg.lfilter(sybpf, 1, data)
+
+        return sig
+
+    def gabor(self, length, center, width, K = 1, phi = 0, fs = 16000):
+        print("length = " + str(length) + " center = " + str(center) + " width = " + str(width) )
+        width = width/5500
+        sigma = sqrt(2*pi)/width
+        ga = sg.gaussian(length, sigma)
+        sinWave = np.array([cos(2*pi*i*center/fs) for i in range(0, length)])
+        filt = ga * sinWave
+        return filt
+    #-----------/filter-----------
+
+    #------------fft-----------
     def fft(self, data = None, fs = None, graph = False, saveName = None, sig = None):
         if fs is None:
             fs = self.fs
@@ -87,12 +162,13 @@ class MusiQ:
             winFunc = sg.hamming(len(data))  #窓関数
             winSig = data * winFunc
             fftsig = np.abs(fftpack.fft(winSig))#[:len(sig)/2])
-            freq = fftpack.fftfreq(len(sig), d = 1.0 / fs)
+            freq = fftpack.fftfreq(len(data), d = 1.0 / fs)
             #freq = freq[:len(freq)/2]
 
             return fftsig, freq
+    #-----------/fft-----------
 
-
+    #------------cepstrum-----------
     def cepstrum(self, dim = 10,glaph = False):
         self.ceps = []
         self.highCeps = []
@@ -120,7 +196,9 @@ class MusiQ:
                 plt.ylabel("log amplitude spectrum")
 
                 plt.show()
+    #-----------/cepstrum-----------
 
+    #------------mfcc-----------
     def preEmphasis(self, data, p = 0.97):
         return sg.lfilter([1.0, -p], 1, data)
 
@@ -190,7 +268,9 @@ class MusiQ:
                 plt.plot(ceps)
                 plt.xlabel("frequency")
                 plt.show()
+    #------------/mfcc-----------
 
+    #------------lpc-----------
     def autocor(self, x, nlags=None):
         N = len(x)
         if nlags == None: nlags = N
@@ -246,32 +326,30 @@ class MusiQ:
 
                 plt.xlim((0, 10000))
                 plt.show()
+    #-----------/lpc-----------
 
 
-
-
-    def outputCSV(self, data, filename):
-        try:
-            fp = open(filename + ".csv", 'w')
-            csvWriter = csv.writer(fp, lineterminator='\n')
-        except IOError:
-            print (filename + " cannot be opened.")
-            exit()
-        except Exception as e:
-            print('type' + str(type(e)))
-            exit()
-        for elem in data:
-            csvWriter.writerow(elem)
-        print("save " + filename +".csv")
 
 
 
 
 
 if __name__ == '__main__':
-    music = MusiQ(sys.argv[1],graph = True)
-    #music.divide(256,128)
-    #music.lpc(16)
+    music = MusiQ(sys.argv[1],graph = False)
+    music.divide(256,128)
+
+    bpsig = music.bpf(music.windowData[10], 1100, 2000)
+
+    sig, freq = music.fft(data = bpsig, fs = 16000)
+    orisig, orifreq = music.fft(data = music.windowData[10], fs = 16000)
+
+    plt.plot(freq[:len(freq)/2], sig[:len(sig)/2], label = "processing")
+    plt.plot(orifreq[:len(freq)/2], orisig[:len(sig)/2], label = "original")
+    plt.legend(loc='best')
+    plt.show()
+
+
+    #music.lpc(16,graph = True)
     #music.mfcc(dim = 12, graph = True)
     #music.outputCSV(music.mfcc, "test")
     #music.fft()
