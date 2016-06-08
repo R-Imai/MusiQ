@@ -14,6 +14,8 @@ from scipy import fftpack
 from scipy import signal as sg
 import csv
 from math import*
+import pyaudio
+import wave
 
 argv = sys.argv
 argNum = len(sys.argv)
@@ -22,15 +24,27 @@ argNum = len(sys.argv)
 class MusiQ:
     def __init__(self, filename, fs = 16000, graph = False):
         self.filename = filename
+        self.fs = fs
         self.importFile(self.filename, graph = graph)
         self.windowData = []
-        self.fs = fs
 
     #-------------IO--------------
     def importFile(self, rawfile, graph = False):
-        f = open(rawfile, "rb")
-        rawData = f.read()
-        self.data = np.frombuffer(rawData, dtype="int16")
+        if ".wav" in rawfile:
+            self.importWave(rawfile, graph = graph)
+        else:
+            f = open(rawfile, "rb")
+            rawData = f.read()
+            self.data = np.frombuffer(rawData, dtype="int16")
+            if graph:
+                plt.plot(self.data)
+                plt.show()
+
+    def importWave(self, wavfile, graph = False):
+        wave_file = wave.open(wavfile,"r") #Open
+        x = wave_file.readframes(wave_file.getnframes()) #frameの読み込み
+        self.fs = wave_file.getframerate()
+        self.data = np.frombuffer(x, dtype= "int16") #numpy.arrayに変換
         if graph:
             plt.plot(self.data)
             plt.show()
@@ -68,6 +82,24 @@ class MusiQ:
         for i in range(len(self.data)//shift):
             #print(self.data[i*shift : i*shift + length])
             self.windowData.append(self.data[i*shift : i*shift + length])
+
+    def play(self):
+        p = pyaudio.PyAudio()
+        stream = p.open(format = p.get_format_from_width(2), channels = 1, rate = self.fs, output = True)
+        chunk = 1024
+        cnt = 1
+        Pdata = self.data[(cnt - 1)*chunk : cnt*chunk + chunk]
+        while stream.is_active():
+            stream.write(Pdata)
+            cnt += 1
+            Pdata = self.data[(cnt - 1)*chunk : cnt*chunk + chunk]
+            #print(str((cnt - 1)*chunk) + " : " + str(cnt*chunk - chunk - 1))
+            if len(Pdata) == 0:
+                print("stop")
+                stream.stop_stream()
+        stream.close()
+        p.terminate()
+
     #-----------/IO-----------
 
     #------------filter-----------
@@ -336,9 +368,10 @@ class MusiQ:
 
 if __name__ == '__main__':
     music = MusiQ(sys.argv[1],graph = False)
+    music.play()
     music.divide(256,128)
 
-    bpsig = music.bpf(music.windowData[10], 1100, 2000)
+    """bpsig = music.bpf(music.windowData[10], 1100, 2000)
 
     sig, freq = music.fft(data = bpsig, fs = 16000)
     orisig, orifreq = music.fft(data = music.windowData[10], fs = 16000)
@@ -346,7 +379,7 @@ if __name__ == '__main__':
     plt.plot(freq[:len(freq)/2], sig[:len(sig)/2], label = "processing")
     plt.plot(orifreq[:len(freq)/2], orisig[:len(sig)/2], label = "original")
     plt.legend(loc='best')
-    plt.show()
+    plt.show()"""
 
 
     #music.lpc(16,graph = True)
