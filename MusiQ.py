@@ -1,11 +1,14 @@
-#coding:utf-8
-#-------------------------------------------------------------------------------
-#   Name:		MusiQ.py
-#	Author:		R.Imai
-#	Created:	2016 / 04 / 09
-#	Last Date:	2016 / 06 / 06
-#	Note:
-#-------------------------------------------------------------------------------
+# -*- coding: utf-8 -*-
+"""
+音関係に関するあれこれ
+"""
+#----------------------------------
+__author__ = "R.Imai"
+__version__ = "0.0"
+__created__ = "2016/04/09"
+__date__ = "2016/07/11"
+#----------------------------------
+
 import numpy as np
 import matplotlib.pyplot as plt
 import wave
@@ -16,9 +19,6 @@ import csv
 from math import*
 import pyaudio
 import wave
-
-argv = sys.argv
-argNum = len(sys.argv)
 
 
 class MusiQ:
@@ -44,7 +44,7 @@ class MusiQ:
         wave_file = wave.open(wavfile,"r") #Open
         x = wave_file.readframes(wave_file.getnframes()) #frameの読み込み
         self.fs = wave_file.getframerate()
-        self.data = np.frombuffer(x, dtype= "int16") #numpy.arrayに変換
+        self.data = np.frombuffer(x, dtype= "int16")#numpy.arrayに変換
         if graph:
             plt.plot(self.data)
             plt.show()
@@ -63,6 +63,13 @@ class MusiQ:
             csvWriter.writerow(elem)
         print("save " + filename +".csv")
 
+    def outputWave(self, data, filename):
+        write_wave = wave.Wave_write(filename)
+        data = data.astype(np.int16)
+        write_wave.setparams((1,2,self.fs,len(data),"NONE", "not compressed"))
+        write_wave.writeframes(data)
+        write_wave.close()
+
     def transrate(self, filename):
         try:
             fp = open(filename, 'w')
@@ -76,26 +83,30 @@ class MusiQ:
             fp.write(str(self.data[i]) + "\n")
         print("save " + filename)
 
-    def divide(self, length, shift = 0):
+    def divide(self, length, shift = 0, silentCut = False):
         if shift == 0:
             shift = length
         for i in range(len(self.data)//shift):
-            #print(self.data[i*shift : i*shift + length])
-            self.windowData.append(self.data[i*shift : i*shift + length])
+            if silentCut:
+                if max(self.data[i*shift : i*shift + length]) > 1000:
+                    self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
+            else:
+                self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
 
-    def play(self):
+    def play(self, data = None):
+        if data is None:
+            data = self.data
         p = pyaudio.PyAudio()
         stream = p.open(format = p.get_format_from_width(2), channels = 1, rate = self.fs, output = True)
         chunk = 1024
         cnt = 1
-        Pdata = self.data[(cnt - 1)*chunk : cnt*chunk + chunk]
+        Pdata = data[(cnt - 1)*chunk : cnt*chunk + chunk]
         while stream.is_active():
             stream.write(Pdata)
             cnt += 1
-            Pdata = self.data[(cnt - 1)*chunk : cnt*chunk + chunk]
+            Pdata = data[(cnt - 1)*chunk : cnt*chunk + chunk]
             #print(str((cnt - 1)*chunk) + " : " + str(cnt*chunk - chunk - 1))
             if len(Pdata) == 0:
-                print("stop")
                 stream.stop_stream()
         stream.close()
         p.terminate()
@@ -193,17 +204,32 @@ class MusiQ:
         else:
             winFunc = sg.hamming(len(data))  #窓関数
             winSig = data * winFunc
-            fftsig = np.abs(fftpack.fft(winSig))#[:len(sig)/2])
+            sig = np.abs(fftpack.fft(winSig))
+
             freq = fftpack.fftfreq(len(data), d = 1.0 / fs)
             #freq = freq[:len(freq)/2]
+            if graph or not(saveName == None):
+                plt.subplot(111)
+                plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
+                #plt.ylim(0, 5000000)
+                plt.xlabel("frequency [Hz]")
+                plt.ylabel("amplitude spectrum")
+                if saveName == None:
+                    plt.show()
+                else:
+                    plt.savefig(saveName + str(cnt) +".png")
+                    plt.close()
+                    cnt += 1
 
-            return fftsig, freq
+            return sig[:len(sig)/2], freq[:len(sig)/2]
     #-----------/fft-----------
 
     #------------cepstrum-----------
     def cepstrum(self, dim = 10,glaph = False):
+        print("for")
         self.ceps = []
         self.highCeps = []
+        print("for")
         for spec, freq in zip(self.fftsig, self.fftfreq):
             AdftLog = 20 * np.log10(spec)
             cps = np.real(fftpack.ifft(AdftLog))
@@ -218,7 +244,7 @@ class MusiQ:
             self.ceps.append(dftSpc)
             dftSpcSpc = np.real(fftpack.fft(cpsLifLif))
             self.highCeps.append(dftSpcSpc)
-
+            print("show?")
             if glaph:
                 plt.plot(freq[:len(freq)/2], AdftLog[:len(freq)/2])
                 # 高周波成分を除いた声道特性のスペクトル包絡を重ねて描画
@@ -226,7 +252,7 @@ class MusiQ:
                 #plt.plot(freq[:len(freq)/2], dftSpcSpc[:len(freq)/2], color="green")
                 plt.xlabel("frequency [Hz]")
                 plt.ylabel("log amplitude spectrum")
-
+                print("show")
                 plt.show()
     #-----------/cepstrum-----------
 
@@ -245,7 +271,7 @@ class MusiQ:
     def melFilterBank(self, nfft, numChannels):
         fmax = self.fs / 2
         melmax = self.hz_Mel(fmax)
-        nmax = nfft / 2
+        nmax = floor(nfft / 2)
         df = self.fs / nfft
         dmel = melmax / (numChannels + 1)
         melcenters = np.arange(1, numChannels + 1) * dmel
@@ -266,11 +292,16 @@ class MusiQ:
         return filterbank, fcenters
 
 
-    def mfcc(self,dim = 20 ,mel = 20 ,graph = False):
-        self.mfcc = []
-        for windata in self.windowData:
-            preEmData = self.preEmphasis(windata, 0.97)
-            nfft = len(windata)
+    def mfcc(self,data = None, dim = 20 ,mel = 20 ,graph = False, preEm = True):
+        fg = data
+        if data is None:
+            data = self.windowData
+        mfcc = []
+        for windata in data:
+            preEmData = windata
+            if preEm:
+                preEmData = self.preEmphasis(windata, 0.97)
+            nfft = len(preEmData)
             winFunc = sg.hamming(len(preEmData))
             wavdata = preEmData * winFunc
             spec = np.abs(fftpack.fft(wavdata))[:nfft/2]
@@ -285,7 +316,7 @@ class MusiQ:
 
             # 離散コサイン変換
             ceps = fftpack.realtransforms.dct(mspec, type=2, norm="ortho", axis=-1)[:dim]
-            self.mfcc.append(ceps)
+            mfcc.append(ceps)
 
             if graph:
                 plt.subplot(311)
@@ -300,6 +331,9 @@ class MusiQ:
                 plt.plot(ceps)
                 plt.xlabel("frequency")
                 plt.show()
+        if fg is None:
+            self.mfccData = mfcc
+        return mfcc
     #------------/mfcc-----------
 
     #------------lpc-----------
@@ -335,24 +369,32 @@ class MusiQ:
         return a,E
 
 
-    def lpc(self, order, graph = False):
-        self.lpc = []
-        for sig in self.windowData:
+    def lpc(self,data = None, order = 32, graph = False, debug = False):
+        if data is None:
+            data = self.windowData
+        self.lpcData = []
+        self.lpc_fscale = []
+        for sig in data:
             preEm = self.preEmphasis(sig, p = 0.97) * sg.hamming(len(sig))
             r = self.autocor(preEm,order + 1)
             a, e = self.levDur(r, order)
 
             nfft = len(preEm)
-            fscale = np.fft.fftfreq(nfft, d = 1.0 / 16000)[:nfft/2]
-
+            fscale = np.fft.fftfreq(nfft, d = 1.0 / self.fs)[:nfft/2]
+            self.lpc_fscale.append(fscale)
             freqsig = np.abs(fftpack.fft(preEm))
             logspec = 20 * np.log10(freqsig)
 
             w, h = sg.freqz(np.sqrt(e), a, nfft, "whole")
             lpcspec = np.abs(h)
             loglpcspec = 20 * np.log10(lpcspec)
-
+            self.lpcData.append(loglpcspec[:nfft/2])
             if graph:
+                if debug:
+                    pass
+                    #plt.subplot(211)
+                    #plt.plot(sig)
+                    #plt.subplot(212)
                 plt.plot(fscale, logspec[:nfft/2])
                 plt.plot(fscale, loglpcspec[:nfft/2], "r", linewidth=2)
 
@@ -367,9 +409,10 @@ class MusiQ:
 
 
 if __name__ == '__main__':
-    music = MusiQ(sys.argv[1],graph = False)
-    music.play()
-    music.divide(256,128)
+    music = MusiQ(sys.argv[1])
+    #music.play()
+    music.divide(11000,5500,silentCut = True)
+    music.lpc(order = 32, graph = True)
 
     """bpsig = music.bpf(music.windowData[10], 1100, 2000)
 
