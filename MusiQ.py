@@ -6,7 +6,7 @@
 __author__ = "R.Imai"
 __version__ = "0.0"
 __created__ = "2016/04/09"
-__date__ = "2016/07/11"
+__date__ = "2017/01/13"
 #----------------------------------
 
 import numpy as np
@@ -83,13 +83,20 @@ class MusiQ:
             fp.write(str(self.data[i]) + "\n")
         print("save " + filename)
 
-    def divide(self, length, shift = 0, silentCut = False):
+    def divide(self, length, shift = 0, silentCut = False, lastCut = False, cut_val = 1000):
+        self.windowData = []
         if shift == 0:
             shift = length
         for i in range(len(self.data)//shift):
             if silentCut:
-                if max(self.data[i*shift : i*shift + length]) > 1000:
+                if max(self.data[i*shift : i*shift + length]) > cut_val:
                     self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
+            else:
+                self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
+        if not(lastCut):
+            if silentCut:
+                if max(self.data[i*shift : i*shift + length]) > cut_val:
+                    self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
             else:
                 self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
 
@@ -187,7 +194,7 @@ class MusiQ:
                     self.fftsig.append(sig)#[:len(sig)/2])
                     freq = fftpack.fftfreq(len(sig), d = 1.0 / self.fs)
                     #freq = freq[:len(freq)/2]
-                    self.fftfreq.append(freq)
+                    self.fftfreq.append(freq)#[:len(freq)/2])
                     if graph or not(saveName == None):
                         plt.subplot(111)
                         plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
@@ -225,11 +232,9 @@ class MusiQ:
     #-----------/fft-----------
 
     #------------cepstrum-----------
-    def cepstrum(self, dim = 10,glaph = False):
-        print("for")
+    def cepstrum(self, dim = 10,graph = False):
         self.ceps = []
         self.highCeps = []
-        print("for")
         for spec, freq in zip(self.fftsig, self.fftfreq):
             AdftLog = 20 * np.log10(spec)
             cps = np.real(fftpack.ifft(AdftLog))
@@ -241,18 +246,16 @@ class MusiQ:
             cpsLifLif[0:len(cpsLifLif)/2 - dim/2] = 0
             cpsLifLif[len(cpsLifLif)/2 + dim/2 + 1:len(cpsLif) - 1] = 0
             dftSpc = np.real(fftpack.fft(cpsLif))
-            self.ceps.append(dftSpc)
+            self.ceps.append(dftSpc[:len(freq)/2])
             dftSpcSpc = np.real(fftpack.fft(cpsLifLif))
-            self.highCeps.append(dftSpcSpc)
-            print("show?")
-            if glaph:
+            self.highCeps.append(dftSpcSpc[:len(freq)/2])
+            if graph:
                 plt.plot(freq[:len(freq)/2], AdftLog[:len(freq)/2])
                 # 高周波成分を除いた声道特性のスペクトル包絡を重ねて描画
                 plt.plot(freq[:len(freq)/2], dftSpc[:len(freq)/2], color="red")
                 #plt.plot(freq[:len(freq)/2], dftSpcSpc[:len(freq)/2], color="green")
                 plt.xlabel("frequency [Hz]")
                 plt.ylabel("log amplitude spectrum")
-                print("show")
                 plt.show()
     #-----------/cepstrum-----------
 
@@ -369,20 +372,20 @@ class MusiQ:
         return a,E
 
 
-    def lpc(self,data = None, order = 32, graph = False, debug = False):
+    def lpc(self,data = None, order = 32, graph = False, debug = False, nfft = 2048):
         if data is None:
             data = self.windowData
         self.lpcData = []
         self.lpc_fscale = []
         for sig in data:
             preEm = self.preEmphasis(sig, p = 0.97) * sg.hamming(len(sig))
-            r = self.autocor(preEm,order + 1)
+            r = self.autocor(preEm, order + 1)
             a, e = self.levDur(r, order)
 
-            nfft = len(preEm)
+            #nfft = 2048#len(preEm)
             fscale = np.fft.fftfreq(nfft, d = 1.0 / self.fs)[:nfft/2]
             self.lpc_fscale.append(fscale)
-            freqsig = np.abs(fftpack.fft(preEm))
+            freqsig = np.abs(fftpack.fft(preEm,nfft))
             logspec = 20 * np.log10(freqsig)
 
             w, h = sg.freqz(np.sqrt(e), a, nfft, "whole")
@@ -391,10 +394,9 @@ class MusiQ:
             self.lpcData.append(loglpcspec[:nfft/2])
             if graph:
                 if debug:
-                    pass
-                    #plt.subplot(211)
-                    #plt.plot(sig)
-                    #plt.subplot(212)
+                    plt.subplot(211)
+                    plt.plot(sig)
+                    plt.subplot(212)
                 plt.plot(fscale, logspec[:nfft/2])
                 plt.plot(fscale, loglpcspec[:nfft/2], "r", linewidth=2)
 
