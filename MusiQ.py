@@ -6,7 +6,7 @@
 __author__ = "R.Imai"
 __version__ = "0.0"
 __created__ = "2016/04/09"
-__date__ = "2017/01/13"
+__date__ = "2017/01/14"
 #----------------------------------
 
 import numpy as np
@@ -94,11 +94,12 @@ class MusiQ:
             else:
                 self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
         if not(lastCut):
-            if silentCut:
-                if max(self.data[i*shift : i*shift + length]) > cut_val:
+            if not(len(self.data[len(self.data)//shift*shift : i*shift + length]) == 0):
+                if silentCut:
+                    if max(self.data[len(self.data)//shift*shift : i*shift + length]) > cut_val:
+                        self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
+                else:
                     self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
-            else:
-                self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
 
     def play(self, data = None):
         if data is None:
