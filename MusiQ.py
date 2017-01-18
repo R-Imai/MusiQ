@@ -4,9 +4,9 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "0.0"
+__version__ = "1.1.0"
 __created__ = "2016/04/09"
-__date__ = "2017/01/14"
+__date__ = "2017/01/18"
 #----------------------------------
 
 import numpy as np
@@ -18,7 +18,6 @@ from scipy import signal as sg
 import csv
 from math import*
 import pyaudio
-import wave
 
 
 class MusiQ:
@@ -404,6 +403,23 @@ class MusiQ:
                 plt.xlim((0, 10000))
                 plt.show()
     #-----------/lpc-----------
+
+    #-----------formant--------
+    def get_formant(self, lpc, lpc_f):
+        fol = []
+        for i in range(1,len(lpc) - 1):
+            if max(lpc[i-1:i+2]) == lpc[i]:
+                fol.append(lpc_f[i])
+        return fol
+
+    def formant(self):
+        self.lpc()
+        self.formant = []
+
+        for l, lf in zip(self.lpcData, self.lpc_fscale):
+            f_ = get_formant(l, lf)
+            self.formant.append(f_[:5])
+    #-----------/formant-------
 
 
 
