@@ -5,5 +5,5 @@
 ```
 $ git clone https://github.com/R-Imai/MusiQ.git
 $ cd MusiQ
-$ setup.py develop
+$ python setup.py develop
 ```
