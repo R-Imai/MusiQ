@@ -9,15 +9,16 @@ __created__ = "2016/04/09"
 __date__ = "2017/01/18"
 #----------------------------------
 
+import sys
+import csv
+import wave
+from math import*
+
 import numpy as np
 import matplotlib.pyplot as plt
-import wave
-import sys
 from scipy import fftpack
 from scipy import signal as sg
-import csv
-from math import*
-import pyaudio
+
 
 
 class MusiQ:
@@ -101,6 +102,8 @@ class MusiQ:
                     self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
 
     def play(self, data = None):
+        import pyaudio
+
         if data is None:
             data = self.data
         p = pyaudio.PyAudio()
