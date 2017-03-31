@@ -8,6 +8,7 @@ __version__ = "1.1.0"
 __created__ = "2016/04/09"
 __date__ = "2017/01/18"
 #----------------------------------
+import __init__
 
 import sys
 import csv
