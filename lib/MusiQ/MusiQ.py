@@ -214,13 +214,13 @@ class MusiQ:
                     freq = fftpack.fftfreq(len(sig), d = 1.0 / self.fs)
                     #freq = freq[:len(freq)/2]
                     self.fftfreq.append(freq)#[:len(freq)/2])
-                    if graph or not(saveName == None):
+                    if graph or not(saveName is None):
                         plt.subplot(111)
                         plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
                         #plt.ylim(0, 5000000)
                         plt.xlabel("frequency [Hz]")
                         plt.ylabel("amplitude spectrum")
-                        if saveName == None:
+                        if saveName is None:
                             plt.show()
                         else:
                             plt.savefig(saveName + str(cnt) +".png")
@@ -234,13 +234,13 @@ class MusiQ:
 
             freq = fftpack.fftfreq(len(data), d = 1.0 / fs)
             #freq = freq[:len(freq)/2]
-            if graph or not(saveName == None):
+            if graph or not(saveName is None):
                 plt.subplot(111)
                 plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
                 #plt.ylim(0, 5000000)
                 plt.xlabel("frequency [Hz]")
                 plt.ylabel("amplitude spectrum")
-                if saveName == None:
+                if saveName is None:
                     plt.show()
                 else:
                     plt.savefig(saveName + str(cnt) +".png")
@@ -361,7 +361,7 @@ class MusiQ:
     #------------lpc-----------
     def autocor(self, x, nlags=None):
         N = len(x)
-        if nlags == None: nlags = N
+        if nlags is None: nlags = N
         r = np.zeros(nlags)
         for lag in range(nlags):
             for n in range(N - lag):
