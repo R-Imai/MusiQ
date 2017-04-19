@@ -4,8 +4,8 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "1.1.0"
-__created__ = "2016/04/09"
+__version__ = "1.0.0"
+__created__ = "2016/04/19"
 __date__ = "2017/01/18"
 #----------------------------------
 import __init__
@@ -217,7 +217,7 @@ class MusiQ:
                     if graph or not(saveName == None):
                         plt.subplot(111)
                         plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
-                        plt.ylim(0, 5000000)
+                        #plt.ylim(0, 5000000)
                         plt.xlabel("frequency [Hz]")
                         plt.ylabel("amplitude spectrum")
                         if saveName == None:
