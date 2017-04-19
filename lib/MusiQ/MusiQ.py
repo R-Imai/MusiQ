@@ -84,7 +84,7 @@ class MusiQ:
             fp.write(str(self.data[i]) + "\n")
         print("save " + filename)
 
-    def divide(self, length, shift = 0, silentCut = False, lastCut = False, cut_val = 1000):
+    def divide_old(self, length, shift = 0, silentCut = False, lastCut = False, cut_val = 1000):
         self.windowData = []
         if shift == 0:
             shift = length
@@ -101,6 +101,21 @@ class MusiQ:
                         self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
                 else:
                     self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
+
+    def divide(self, length, shift = 0, silent_cut = False, last_cut = False, cut_val = 1000, data = None):
+        if data is None:
+            data = self.data
+        if shift == 0:
+            shift = length
+        if silent_cut:
+            self.windowData = [data[i*shift : i*shift+length] for i in range((len(data) - length)//shift + 1) if max(abs(data[i*shift : i*shift+length])) > cut_val]
+        else:
+            self.windowData = [data[i*shift : i*shift+length] for i in range((len(data) - length)//shift + 1)]
+        if last_cut:
+            elem = list(data[((len(data) - length)//shift)*shift + length + 1:]) + [0 for i in range(length)]
+            self.windowData.append(np.array(elem[:length]))
+        return self.windowData
+
 
     def play(self, data = None):
         import pyaudio
