@@ -5,8 +5,8 @@
 #----------------------------------
 __author__ = "R.Imai"
 __version__ = "1.0.0"
-__created__ = "2016/04/19"
-__date__ = "2017/01/18"
+__created__ = "2016/01/14"
+__date__ = "2017/04/20"
 #----------------------------------
 import __init__
 
@@ -83,24 +83,6 @@ class MusiQ:
         for i in range(len(self.data) - 1):
             fp.write(str(self.data[i]) + "\n")
         print("save " + filename)
-
-    def divide_old(self, length, shift = 0, silentCut = False, lastCut = False, cut_val = 1000):
-        self.windowData = []
-        if shift == 0:
-            shift = length
-        for i in range(len(self.data)//shift):
-            if silentCut:
-                if max(self.data[i*shift : i*shift + length]) > cut_val:
-                    self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
-            else:
-                self.windowData.append(self.data[i*shift : i*shift + length].astype(np.int64))
-        if not(lastCut):
-            if not(len(self.data[len(self.data)//shift*shift : i*shift + length]) == 0):
-                if silentCut:
-                    if max(self.data[len(self.data)//shift*shift : i*shift + length]) > cut_val:
-                        self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
-                else:
-                    self.windowData.append(self.data[len(self.data)//shift*shift : i*shift + length].astype(np.int64))
 
     def divide(self, length, shift = 0, silent_cut = False, last_cut = False, cut_val = 1000, data = None):
         if data is None:
