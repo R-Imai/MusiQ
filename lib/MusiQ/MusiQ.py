@@ -6,7 +6,7 @@
 __author__ = "R.Imai"
 __version__ = "1.0.1"
 __created__ = "2016/01/14"
-__date__ = "2017/05/24"
+__date__ = "2017/05/25"
 #----------------------------------
 import __init__
 
@@ -23,83 +23,122 @@ from scipy import signal as sg
 
 
 class MusiQ:
-    def __init__(self, filename, fs = 16000, graph = False):
-        self.filename = filename
+    def __init__(self, path, fs = 16000, graph = False):
+        self.path = path
         self.fs = fs
-        self.importFile(self.filename, graph = graph)
-        self.windowData = []
+        self.import_file(self.path, graph = graph)
+
+        self.window_data = []
+        self.fftsig = []
+        self.fftfreq = []
+
 
     #-------------IO--------------
-    def importFile(self, rawfile, graph = False):
-        if ".wav" in rawfile:
-            self.importWave(rawfile, graph = graph)
+    def import_file(self, path, graph = False):
+        """import sound file
+        # arguments
+            path: path of sound file
+            graph: this arg is True, plot sound graph
+        """
+        if ".wav" in path:
+            self.importWave(path, graph = graph)
         else:
-            f = open(rawfile, "rb")
+            f = open(path, "rb")
             rawData = f.read()
             self.data = np.frombuffer(rawData, dtype="int16")
             if graph:
                 plt.plot(self.data)
                 plt.show()
 
-    def importWave(self, wavfile, graph = False):
-        wave_file = wave.open(wavfile,"r") #Open
-        x = wave_file.readframes(wave_file.getnframes()) #frameの読み込み
+    def importWave(self, path, graph = False):
+        """import wave sound file
+        #arguments
+            path: path of wave sound file (*.wav)
+            graph: this arg is True, plot sound graph
+        """
+        wave_file = wave.open(path,"r")
+        x = wave_file.readframes(wave_file.getnframes())
         self.fs = wave_file.getframerate()
-        self.data = np.frombuffer(x, dtype= "int16")#numpy.arrayに変換
+        self.data = np.frombuffer(x, dtype= "int16")
         if graph:
             plt.plot(self.data)
             plt.show()
 
-    def outputCSV(self, data, filename):
+    def outputCSV(self, data, path):
+        """output csv file
+        #arguments
+            data: output data
+            path: path of csv file
+        """
         try:
-            fp = open(filename + ".csv", 'w')
+            fp = open(path, 'w')
             csvWriter = csv.writer(fp, lineterminator='\n')
         except IOError:
-            print (filename + " cannot be opened.")
+            print (path + " cannot be opened.")
             exit()
         except Exception as e:
             print('type' + str(type(e)))
             exit()
         for elem in data:
             csvWriter.writerow(elem)
-        print("save " + filename +".csv")
+        print("save " + path)
 
-    def outputWave(self, data, filename):
-        write_wave = wave.Wave_write(filename)
+    def outputWave(self, data, path):
+        """output wave file
+        #arguments
+            data: output data
+            path: path of wave file
+        """
+        write_wave = wave.Wave_write(path)
         data = data.astype(np.int16)
         write_wave.setparams((1,2,self.fs,len(data),"NONE", "not compressed"))
         write_wave.writeframes(data)
         write_wave.close()
 
-    def transrate(self, filename):
+    def transrate(self, path):
+        """sound data output text data
+        #arguments
+            path: path output file
+        """
         try:
-            fp = open(filename, 'w')
+            fp = open(path, 'w')
         except IOError:
-            print (filename + " cannot be opened.")
+            print (path + " cannot be opened.")
             exit()
         except Exception as e:
             print('type' + str(type(e)))
             exit()
         for i in range(len(self.data) - 1):
             fp.write(str(self.data[i]) + "\n")
-        print("save " + filename)
+        print("save " + path)
 
-    def divide(self, length, shift = 0, silent_cut = False, last_cut = False, cut_val = 1000, data = None):
+    def divide(self, length, shift = 0, silent_cut = False, last_cut = True, cut_val = 1000, data = None):
+        """cut window
+        #argument
+            length: window length
+            shift: window shift [default: length]
+            silent_cut: if this arg is True silent window cut
+            last_cut: if this arg is False last odd window append
+            cut_val: silent_cut threshold [default: 1000]
+        """
         if data is None:
             data = self.data
         if shift == 0:
             shift = length
         if silent_cut:
-            self.windowData = [data[i*shift : i*shift+length] for i in range((len(data) - length)//shift + 1) if max(abs(data[i*shift : i*shift+length])) > cut_val]
+            self.window_data = [data[i*shift : i*shift+length] for i in range((len(data) - length)//shift + 1) if max(abs(data[i*shift : i*shift+length])) > cut_val]
         else:
-            self.windowData = [data[i*shift : i*shift+length] for i in range((len(data) - length)//shift + 1)]
-        if last_cut:
+            self.window_data = [data[i*shift : i*shift+length] for i in range((len(data) - length)//shift + 1)]
+        if not(last_cut):
             elem = list(data[((len(data) - length)//shift)*shift + length + 1:]) + [0 for i in range(length)]
-            self.windowData.append(np.array(elem[:length]))
-        return self.windowData
+            self.window_data.append(np.array(elem[:length]))
+        return self.window_data
 
 
     def play(self, data = None):
+        """sound play
+        this method need pyaudio
+        """
         import pyaudio
 
         if data is None:
@@ -179,57 +218,54 @@ class MusiQ:
     #-----------/filter-----------
 
     #------------fft-----------
-    def fft(self, data = None, fs = None, graph = False, saveName = None, sig = None):
+    def fft(self, data = None, fs = None, graph = False, save_name = None, record = True):
+        """fast fourier transform
+        #arguments
+            data: if you want to apply FFT to something other than self.window_data, write it here
+            fs: sampling rate
+            graph: this arg is True, plot sound graph
+            save_name: save graph name
+            record: if this is False, not retention self.fftsig and self.fftfreq
+        """
         if fs is None:
             fs = self.fs
-
         if data is None:
-            self.fftsig = []
-            self.fftfreq = []
-            if not len(self.windowData) == 0:
-                cnt = 0
-                for sig in self.windowData:
-                    winFunc = sg.hamming(len(sig))  #窓関数
-                    winSig = sig * winFunc
-                    sig = np.abs(fftpack.fft(winSig))
-                    self.fftsig.append(sig)#[:len(sig)/2])
-                    freq = fftpack.fftfreq(len(sig), d = 1.0 / self.fs)
-                    #freq = freq[:len(freq)/2]
-                    self.fftfreq.append(freq)#[:len(freq)/2])
-                    if graph or not(saveName is None):
-                        plt.subplot(111)
-                        plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
-                        #plt.ylim(0, 5000000)
-                        plt.xlabel("frequency [Hz]")
-                        plt.ylabel("amplitude spectrum")
-                        if saveName is None:
-                            plt.show()
-                        else:
-                            plt.savefig(saveName + str(cnt) +".png")
-                            plt.close()
-                            cnt += 1
-
+            if len(self.window_data) != 0:
+                data = self.window_data
+            else:
+                print("[error] please make window at divide() or please pass the data to the argument 'data'")
+                exit()
         else:
-            winFunc = sg.hamming(len(data))  #窓関数
-            winSig = data * winFunc
-            sig = np.abs(fftpack.fft(winSig))
+            if len(np.array(data).shape) == 1:
+                data = [data]
 
-            freq = fftpack.fftfreq(len(data), d = 1.0 / fs)
-            #freq = freq[:len(freq)/2]
-            if graph or not(saveName is None):
-                plt.subplot(111)
+        fftsig = []
+        fftfreq = []
+        cnt = 0
+        for elem in data:
+            win_func = sg.hamming(len(elem))
+            win_sig = elem*win_func
+            sig = np.abs(fftpack.fft(win_sig))
+            fftsig.append(sig[:len(sig)/2])
+            freq = fftpack.fftfreq(len(sig), d = 1.0 / self.fs)
+            fftfreq.append(freq[:len(sig)/2])
+
+            if graph or not(save_name is None):
                 plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
                 #plt.ylim(0, 5000000)
                 plt.xlabel("frequency [Hz]")
                 plt.ylabel("amplitude spectrum")
-                if saveName is None:
+                if save_name is None:
                     plt.show()
                 else:
-                    plt.savefig(saveName + str(cnt) +".png")
+                    plt.savefig(save_name + str(cnt) +".png")
                     plt.close()
                     cnt += 1
 
-            return sig[:len(sig)/2], freq[:len(sig)/2]
+        if record:
+            self.fftsig = fftsig
+            self.fftfreq = fftfreq
+        return fftfreq, fftsig
     #-----------/fft-----------
 
     #------------cepstrum-----------
@@ -299,7 +335,7 @@ class MusiQ:
     def mfcc(self,data = None, dim = 20 ,mel = 20 ,graph = False, preEm = True):
         fg = data
         if data is None:
-            data = self.windowData
+            data = self.window_data
         mfcc = []
         for windata in data:
             preEmData = windata
@@ -375,7 +411,7 @@ class MusiQ:
 
     def lpc(self,data = None, order = 32, graph = False, debug = False, nfft = 2048):
         if data is None:
-            data = self.windowData
+            data = self.window_data
         self.lpcData = []
         self.lpc_fscale = []
         for sig in data:
