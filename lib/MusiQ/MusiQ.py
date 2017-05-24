@@ -4,9 +4,9 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __created__ = "2016/01/14"
-__date__ = "2017/04/20"
+__date__ = "2017/05/24"
 #----------------------------------
 import __init__
 
@@ -418,7 +418,7 @@ class MusiQ:
         self.formant = []
 
         for l, lf in zip(self.lpcData, self.lpc_fscale):
-            f_ = get_formant(l, lf)
+            f_ = self.get_formant(l, lf)
             self.formant.append(f_[:5])
     #-----------/formant-------
 
