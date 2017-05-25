@@ -415,11 +415,12 @@ class MusiQ:
 
     def formant(self):
         self.lpc()
-        self.formant = []
+        self.formant_data = []
 
         for l, lf in zip(self.lpcData, self.lpc_fscale):
             f_ = self.get_formant(l, lf)
-            self.formant.append(f_[:5])
+            self.formant_data.append(f_[:5])
+        return self.formant_data
     #-----------/formant-------
 
 
