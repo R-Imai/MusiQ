@@ -23,5 +23,10 @@ try:
 except ImportError:
     print("[warning] The play function can not be used unless you install \"pyaudio\"")
 
+try:
+    import sklearn
+except ImportError:
+    print("[warning] The delta function can not be used unless you install \"sklearn\"")
+
 if less_package:
     exit()
