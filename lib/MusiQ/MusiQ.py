@@ -4,9 +4,9 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "2.0.0"
+__version__ = "2.1.0"
 __created__ = "2016/01/14"
-__date__ = "2017/05/25"
+__date__ = "2017/05/29"
 #----------------------------------
 import __init__
 
@@ -234,6 +234,34 @@ def gabor(length, center, width, K = 1, phi = 0, fs = 16000):
     filt = ga * sinWave
     return filt
 #-----------/filter-----------
+
+#------------delta-----------
+def delta(data):
+    """calc delta param
+    # argument
+        data: data for which you want to calculate the delta
+    # return
+        numpy array two dimensions
+    """
+    from sklearn import linear_model
+    data = np.array(data)
+    if len(data.shape) == 1:
+        data = np.array([data])
+    data = data.T
+    re = []
+    for flame in data:
+        re_elem = []
+        clf = linear_model.LinearRegression()
+        flame = [flame[0],flame[0]] + list(flame) + [flame[-1],flame[-1]]
+        for c in range(2,len(flame)-2):
+            elem = flame[c-2:c+3]
+            times = [[i+1]for i in range(len(elem))]
+            clf.fit(times, elem)
+            re_elem.append(clf.coef_[0])
+        re.append(np.array(re_elem))
+
+    return np.array(re).T
+#------------/delta-----------
 
 #------------fft-----------
 def fft(mq_data, data = None, fs = None, graph = False, save_name = None):
