@@ -237,6 +237,12 @@ def gabor(length, center, width, K = 1, phi = 0, fs = 16000):
 
 #------------delta-----------
 def delta(data):
+    """calc delta param
+    # argument
+        data: data for which you want to calculate the delta
+    # return
+        numpy array two dimensions
+    """
     from sklearn import linear_model
     data = np.array(data)
     if len(data.shape) == 1:
