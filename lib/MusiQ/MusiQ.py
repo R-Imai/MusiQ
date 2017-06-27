@@ -4,7 +4,7 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 __created__ = "2016/01/14"
 __date__ = "2017/05/29"
 #----------------------------------
@@ -244,10 +244,13 @@ def delta(data):
         numpy array two dimensions
     """
     from sklearn import linear_model
+    is_dim1 = True
     data = np.array(data)
     if len(data.shape) == 1:
         data = np.array([data])
-    data = data.T
+    else:
+        data = data.T
+        is_dim1 = False
     re = []
     for flame in data:
         re_elem = []
@@ -260,7 +263,11 @@ def delta(data):
             re_elem.append(clf.coef_[0])
         re.append(np.array(re_elem))
 
-    return np.array(re).T
+    if is_dim1:
+        re = re[0]
+    else:
+        re = np.array(re).T
+    return re
 #------------/delta-----------
 
 #------------fft-----------
@@ -389,9 +396,9 @@ def melFilterBank(mq_data, nfft, numChannels):
     dmel = melmax / (numChannels + 1)
     melcenters = np.arange(1, numChannels + 1) * dmel
     fcenters = mel2hz(melcenters)
-    indexcenter = np.round(fcenters / df)
-    indexstart = np.hstack(([0], indexcenter[0:numChannels - 1]))
-    indexstop = np.hstack((indexcenter[1:numChannels], [nmax]))
+    indexcenter = np.array(list(map(int,np.round(fcenters / df))))
+    indexstart = np.array(list(map(int,np.hstack(([0], indexcenter[0:numChannels - 1])))))
+    indexstop = np.array(list(map(int,np.hstack((indexcenter[1:numChannels], [nmax])))))
 
     filterbank = np.zeros((numChannels, nmax))
     for c in np.arange(0, numChannels):
@@ -424,8 +431,8 @@ def mfcc(mq_data, dim = 20 ,mel = 20 ,graph = False, save_name = None, preEm = T
         nfft = len(preEmData)
         winFunc = sg.hamming(len(preEmData))
         wavdata = preEmData * winFunc
-        spec = np.abs(fftpack.fft(wavdata))[:nfft/2]
-        fscale = fftpack.fftfreq(nfft, d = 1.0 / mq_data.fs)[:nfft/2]
+        spec = np.abs(fftpack.fft(wavdata))[:int(nfft/2)]
+        fscale = fftpack.fftfreq(nfft, d = 1.0 / mq_data.fs)[:int(nfft/2)]
 
         # メルフィルタバンクを作成
         df = mq_data.fs / nfft   # 周波数解像度（周波数インデックス1あたりのHz幅）
@@ -515,7 +522,7 @@ def lpc(mq_data, order = 32, graph = False, save_name = None, debug = False, nff
         a, e = _levDur(r, order)
 
         #nfft = 2048#len(preEm)
-        fscale = np.fft.fftfreq(nfft, d = 1.0 / mq_data.fs)[:nfft/2]
+        fscale = np.fft.fftfreq(nfft, d = 1.0 / mq_data.fs)[:int(nfft/2)]
         lpc_fscale.append(fscale)
         freqsig = np.abs(fftpack.fft(preEm,nfft))
         logspec = 20 * np.log10(freqsig)
@@ -523,14 +530,14 @@ def lpc(mq_data, order = 32, graph = False, save_name = None, debug = False, nff
         w, h = sg.freqz(np.sqrt(e), a, nfft, "whole")
         lpcspec = np.abs(h)
         loglpcspec = 20 * np.log10(lpcspec)
-        lpcData.append(loglpcspec[:nfft/2])
+        lpcData.append(loglpcspec[:int(nfft/2)])
         if graph or not(save_name is None):
             if debug:
                 plt.subplot(211)
                 plt.plot(sig)
                 plt.subplot(212)
-            plt.plot(fscale, logspec[:nfft/2])
-            plt.plot(fscale, loglpcspec[:nfft/2], "r", linewidth=2)
+            plt.plot(fscale, logspec[:int(nfft/2)])
+            plt.plot(fscale, loglpcspec[:int(nfft/2)], "r", linewidth=2)
 
             plt.xlim((0, 10000))
             if save_name is None:
