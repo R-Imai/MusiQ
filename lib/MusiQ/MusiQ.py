@@ -4,9 +4,9 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "2.1.1"
+__version__ = "2.2.0"
 __created__ = "2016/01/14"
-__date__ = "2017/05/29"
+__date__ = "2017/10/15"
 #----------------------------------
 import __init__
 
@@ -14,6 +14,8 @@ import sys
 import csv
 import wave
 from math import*
+import warnings
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -139,6 +141,7 @@ class data:
         """sound play
         this method need pyaudio
         """
+        warnings.warn("This method is deprecated.\nPlease use the player method of player class or use the play function in MusiQ.")
         import pyaudio
 
         if data is None:
@@ -159,6 +162,54 @@ class data:
         p.terminate()
 
     #-----------/IO-----------
+
+class player:
+    """sound play
+    this class need pyaudio
+    """
+    def __init__(self, fs):
+        self.fs = fs
+
+    def play(self, data):
+        import pyaudio
+        p = pyaudio.PyAudio()
+        stream = p.open(format = p.get_format_from_width(2), channels = 1, rate = self.fs, output = True)
+        chunk = 1024
+        cnt = 1
+        Pdata = data[(cnt - 1)*chunk : cnt*chunk + chunk]
+        while stream.is_active():
+            stream.write(Pdata)
+            cnt += 1
+            Pdata = data[(cnt - 1)*chunk : cnt*chunk + chunk]
+            #print(str((cnt - 1)*chunk) + " : " + str(cnt*chunk - chunk - 1))
+            if len(Pdata) == 0:
+                stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+
+#------------IO---------------
+def play(data, fs):
+    """sound play
+    this method need pyaudio
+    """
+    import pyaudio
+
+    p = pyaudio.PyAudio()
+    stream = p.open(format = p.get_format_from_width(2), channels = 1, rate = fs, output = True)
+    chunk = 1024
+    cnt = 1
+    Pdata = data[(cnt - 1)*chunk : cnt*chunk + chunk]
+    while stream.is_active():
+        stream.write(Pdata)
+        cnt += 1
+        Pdata = data[(cnt - 1)*chunk : cnt*chunk + chunk]
+        #print(str((cnt - 1)*chunk) + " : " + str(cnt*chunk - chunk - 1))
+        if len(Pdata) == 0:
+            stream.stop_stream()
+    stream.close()
+    p.terminate()
+#-----------------------------
 
 #------------filter-----------
 def _sinc(x):
