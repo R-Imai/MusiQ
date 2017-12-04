@@ -4,9 +4,9 @@
 """
 #----------------------------------
 __author__ = "R.Imai"
-__version__ = "2.2.0"
+__version__ = "2.2.1"
 __created__ = "2016/01/14"
-__date__ = "2017/10/15"
+__date__ = "2017/12/04"
 #----------------------------------
 import __init__
 
@@ -337,7 +337,7 @@ def fft(mq_data, data = None, fs = None, graph = False, save_name = None):
         if len(mq_data.window_data) != 0:
             data = mq_data.window_data
         else:
-            print("[error] please make window at MusiQ.data.divide() or please pass the data to the argument 'data'")
+            print("[error] please make window at MusiQ.data.windowing() or please pass the data to the argument 'data'")
             exit()
     else:
         if len(np.array(data).shape) == 1:
@@ -350,12 +350,13 @@ def fft(mq_data, data = None, fs = None, graph = False, save_name = None):
         win_func = sg.hamming(len(elem))
         win_sig = elem*win_func
         sig = np.abs(fftpack.fft(win_sig))
-        fftsig.append(sig[:len(sig)/2])
+        half_len = int(len(sig)/2)
+        fftsig.append(sig[:half_len])
         freq = fftpack.fftfreq(len(sig), d = 1.0 / fs)
-        fftfreq.append(freq[:len(sig)/2])
+        fftfreq.append(freq[:half_len])
 
         if graph or not(save_name is None):
-            plt.plot(freq[:len(sig)/2], sig[:len(sig)/2])
+            plt.plot(freq[:half_len], sig[:half_len])
             #plt.ylim(0, 5000000)
             plt.xlabel("frequency [Hz]")
             plt.ylabel("amplitude spectrum")
@@ -383,21 +384,22 @@ def cepstrum(mq_data, dim = 10, graph = False, save_name = None):
     fftfreq, fftsig = fft(mq_data)
     cnt = 0
     for spec, freq in zip(fftsig, fftfreq):
+        half_freq = int(len(freq)/2)
         AdftLog = 20 * np.log10(spec)
         cps = np.real(fftpack.ifft(AdftLog))
         cpsLif = np.array(cps)
         cpsLifLif = np.array(cps)
         cpsLif[dim:len(cpsLif) - dim + 1] = 0
-        cpsLifLif[0:len(cpsLifLif)/2 - dim/2] = 0
-        cpsLifLif[len(cpsLifLif)/2 + dim/2 + 1:len(cpsLif) - 1] = 0
+        cpsLifLif[0:int(len(cpsLifLif)/2) - dim/2] = 0
+        cpsLifLif[int(len(cpsLifLif)/2) + dim/2 + 1:len(cpsLif) - 1] = 0
         dftSpc = np.real(fftpack.fft(cpsLif))
-        ceps.append(dftSpc[:len(freq)/2])
+        ceps.append(dftSpc[:half_freq])
         dftSpcSpc = np.real(fftpack.fft(cpsLifLif))
-        highCeps.append(dftSpcSpc[:len(freq)/2])
+        highCeps.append(dftSpcSpc[:half_freq])
         if graph or not(save_name is None):
-            plt.plot(freq[:len(freq)/2], AdftLog[:len(freq)/2])
-            plt.plot(freq[:len(freq)/2], dftSpc[:len(freq)/2], color="red")
-            #plt.plot(freq[:len(freq)/2], dftSpcSpc[:len(freq)/2], color="green")
+            plt.plot(freq[:half_freq], AdftLog[:half_freq])
+            plt.plot(freq[:half_freq], dftSpc[:half_freq], color="red")
+            #plt.plot(freq[:half_freq], dftSpcSpc[:half_freq], color="green")
             plt.xlabel("frequency [Hz]")
             plt.ylabel("log amplitude spectrum")
             if save_name is None:
